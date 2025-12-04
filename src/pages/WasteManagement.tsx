@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from '@/components/Navigation';
+import apiClient from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,7 +16,9 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Loader,
+  Zap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -25,34 +28,145 @@ const WasteManagement = () => {
   const navigate = useNavigate();
   const [issueText, setIssueText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+ // const [isLoading, setIsLoading] = useState(false);
+  // const [stats, setStats] = useState({
+  //   issues_reported: 0,
+  //   resolved: 0,
+  //   in_progress: 0,
+  //   pending: 0,
+  // });
+  const [recentReports, setRecentReports] = useState<any[]>([]);
+  const [locationData, setLocationData] = useState<any>(null);
+  const [photoData, setPhotoData] = useState<File | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/auth');
+    } else {
+      fetchStats();
+      fetchReports();
     }
   }, [isAuthenticated, navigate]);
 
-  const handleSubmitIssue = () => {
+  // const fetchStats = async () => {
+  //   try {
+  //     const response = await apiClient.get('/auth/report-stats/');
+  //     setStats(response.data);
+  //   } catch (error) {
+  //     console.error('Failed to fetch stats:', error);
+  //   }
+  //};
+
+    const [stats, setStats] = useState({
+    total_reports: 0,
+    resolved: 0,
+    in_progress: 0,
+    pending: 0
+  });
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchStats = async () => {
+    try {
+      const response = await apiClient.get('/auth/report-stats/');
+      setStats(response.data);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  const fetchReports = async () => {
+    try {
+      const response = await apiClient.get('/auth/reports/');
+      setRecentReports(response.data.reports || []);
+    } catch (error) {
+      console.error('Failed to fetch reports:', error);
+    }
+  };
+
+  const handleGetLocation = () => {
+    // In a real app, this would use the Geolocation API
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const simulatedLocation = {
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+            address: `Lat: ${position.coords.latitude.toFixed(4)}, Long: ${position.coords.longitude.toFixed(4)}`
+          };
+          setLocationData(simulatedLocation);
+          toast.info('Location attached: ' + simulatedLocation.address);
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          const simulatedLocation = { lat: 18.5204, lon: 73.8567, address: 'Simulated Location, Pune' };
+          setLocationData(simulatedLocation);
+          toast.info('Location attached (simulated): ' + simulatedLocation.address);
+        }
+      );
+    } else {
+      const simulatedLocation = { lat: 18.5204, lon: 73.8567, address: 'Simulated Location, Pune' };
+      setLocationData(simulatedLocation);
+      toast.info('Location attached (simulated): ' + simulatedLocation.address);
+    }
+  };
+
+  const handleAddPhoto = () => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.onchange = (e: any) => {
+      const file = e.target.files[0];
+      if (file) {
+        setPhotoData(file);
+        toast.info('Photo attached: ' + file.name);
+      }
+    };
+    fileInput.click();
+  };
+
+  const handleSubmitIssue = async () => {
     if (!issueText.trim()) {
       toast.error('Please describe the issue');
       return;
     }
-    toast.success('Issue reported successfully! Crew dispatched.');
-    setIssueText('');
+
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('description', issueText);
+      formData.append('issue_type', 'Waste Management Issue');
+      if (locationData) {
+        formData.append('location', JSON.stringify(locationData));
+      }
+      if (photoData) {
+        formData.append('photo', photoData);
+      }
+
+      const response = await apiClient.post('/auth/report/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      });
+
+      if (response.status === 201) {
+        toast.success('Issue reported successfully! Crew dispatched.');
+        setIssueText('');
+        setLocationData(null);
+        setPhotoData(null);
+        fetchStats();
+        fetchReports();
+      }
+    } catch (error: any) {
+      console.error('Failed to submit report:', error);
+      toast.error(error.response?.data?.error || 'Failed to submit report. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
-
-  const recentReports = [
-    { id: 1, type: 'Bin Overflow', location: 'Sector 21, Block A', status: 'resolved', time: '2 hours ago' },
-    { id: 2, type: 'Waste Dump', location: 'Main Road, Near Park', status: 'in-progress', time: '5 hours ago' },
-    { id: 3, type: 'Missing Bin', location: 'Community Center', status: 'pending', time: '1 day ago' }
-  ];
-
-  const stats = [
-    { label: 'Issues Reported', value: '8', icon: <AlertCircle className="h-5 w-5" /> },
-    { label: 'Resolved', value: '6', icon: <CheckCircle className="h-5 w-5" /> },
-    { label: 'Avg Response Time', value: '45m', icon: <Clock className="h-5 w-5" /> },
-    { label: 'CO₂ Saved', value: '50kg', icon: <TrendingUp className="h-5 w-5" /> }
-  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -74,7 +188,12 @@ const WasteManagement = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat, index) => (
+          {[
+            { label: 'Issues Reported', value: stats.total_reports, icon: <AlertCircle className="h-5 w-5" /> },
+            { label: 'Resolved', value: stats.resolved, icon: <CheckCircle className="h-5 w-5" /> },
+            { label: 'In Progress', value: stats.in_progress, icon: <Clock className="h-5 w-5" /> },
+            { label: 'CO₂ Saved', value: `${stats.resolved * 50}kg`, icon: <TrendingUp className="h-5 w-5" /> }
+          ].map((stat, index) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 20 }}
@@ -116,9 +235,13 @@ const WasteManagement = () => {
               />
               
               <div className="flex flex-wrap gap-3">
-                <Button variant="outline" className="gap-2">
+                <Button 
+                  variant={photoData ? 'default' : 'outline'} 
+                  className="gap-2"
+                  onClick={handleAddPhoto}
+                >
                   <Camera className="h-4 w-4" />
-                  Add Photo
+                  {photoData ? 'Photo Attached' : 'Add Photo'}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -128,16 +251,30 @@ const WasteManagement = () => {
                   <Mic className={`h-4 w-4 ${isRecording ? 'text-destructive animate-pulse' : ''}`} />
                   {isRecording ? 'Recording...' : 'Voice Note'}
                 </Button>
-                <Button variant="outline" className="gap-2">
+                <Button 
+                  variant={locationData ? 'default' : 'outline'} 
+                  className="gap-2"
+                  onClick={handleGetLocation}
+                >
                   <MapPin className="h-4 w-4" />
-                  Add Location
+                  {locationData ? 'Location Added' : 'Add Location'}
                 </Button>
                 <Button 
                   className="gradient-eco shadow-eco gap-2 ml-auto"
                   onClick={handleSubmitIssue}
+                  disabled={isLoading || !issueText.trim()}
                 >
-                  <Send className="h-4 w-4" />
-                  Submit Report
+                  {isLoading ? (
+                    <>
+                      <Loader className="h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      Submit Report
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -177,39 +314,87 @@ const WasteManagement = () => {
         >
           <h2 className="text-2xl font-semibold text-foreground mb-4">Your Recent Reports</h2>
           <div className="space-y-3">
-            {recentReports.map((report) => (
-              <Card key={report.id} className="p-4 gradient-card border-border/50 hover:shadow-soft transition-all">
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                      <Trash2 className="h-5 w-5" />
+            {recentReports.length > 0 ? (
+              recentReports.map((report) => (
+                <Card key={report.id} className="p-4 gradient-card border-border/50 hover:shadow-soft transition-all">
+                  <div className="flex items-start justify-between flex-wrap gap-4">
+                    {/* Left side - Issue info */}
+                    <div className="flex items-start gap-3 flex-1 min-w-[200px]">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <Trash2 className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-foreground">{report.description}</h4>
+                        <p className="text-sm text-muted-foreground">{report.location || 'Location not specified'}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(report.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-semibold text-foreground">{report.type}</h4>
-                      <p className="text-sm text-muted-foreground">{report.location}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{report.time}</p>
-                    </div>
+
+                    {/* Middle - Classification Info */}
+                    {report.category && (
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-muted-foreground">Category:</span>
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              <Zap className="h-3 w-3 mr-1" />
+                              {report.category}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-muted-foreground">Severity:</span>
+                            <Badge
+                              className={`${
+                                report.severity === 'high'
+                                  ? 'bg-red-50 text-red-700 border-red-200'
+                                  : report.severity === 'medium'
+                                  ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                  : 'bg-green-50 text-green-700 border-green-200'
+                              }`}
+                              variant="outline"
+                            >
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {report.severity}
+                            </Badge>
+                          </div>
+                          {report.response_time && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-muted-foreground">Response:</span>
+                              <span className="text-xs text-foreground">{report.response_time}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Right side - Status */}
+                    <Badge 
+                      variant={
+                        report.status === 'resolved' ? 'default' : 
+                        report.status === 'in-progress' ? 'secondary' : 
+                        'outline'
+                      }
+                      className={
+                        report.status === 'resolved' ? 'bg-success text-success-foreground' :
+                        report.status === 'in-progress' ? 'bg-warning text-warning-foreground' :
+                        ''
+                      }
+                    >
+                      {report.status === 'resolved' ? <CheckCircle className="h-3 w-3 mr-1" /> :
+                       report.status === 'in-progress' ? <Clock className="h-3 w-3 mr-1" /> :
+                       <AlertCircle className="h-3 w-3 mr-1" />}
+                      {report.status}
+                    </Badge>
                   </div>
-                  <Badge 
-                    variant={
-                      report.status === 'resolved' ? 'default' : 
-                      report.status === 'in-progress' ? 'secondary' : 
-                      'outline'
-                    }
-                    className={
-                      report.status === 'resolved' ? 'bg-success text-success-foreground' :
-                      report.status === 'in-progress' ? 'bg-warning text-warning-foreground' :
-                      ''
-                    }
-                  >
-                    {report.status === 'resolved' ? <CheckCircle className="h-3 w-3 mr-1" /> :
-                     report.status === 'in-progress' ? <Clock className="h-3 w-3 mr-1" /> :
-                     <AlertCircle className="h-3 w-3 mr-1" />}
-                    {report.status}
-                  </Badge>
-                </div>
+                </Card>
+              ))
+            ) : (
+              <Card className="p-6 text-center gradient-card border-border/50">
+                <p className="text-muted-foreground">No reports yet. Start by reporting your first issue!</p>
               </Card>
-            ))}
+            )}
           </div>
         </motion.div>
 
@@ -240,8 +425,8 @@ const WasteManagement = () => {
                     <p className="text-muted-foreground">CO₂ Saved/Trip</p>
                   </div>
                   <div>
-                    <span className="text-2xl font-bold text-success">0</span>
-                    <p className="text-muted-foreground">Manual Dispatch</p>
+                    <span className="text-2xl font-bold text-success">{stats.resolved}</span>
+                    <p className="text-muted-foreground">Issues Resolved</p>
                   </div>
                 </div>
               </div>

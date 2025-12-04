@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import CarbonTracking from "./pages/CarbonTracking";
 import WasteManagement from "./pages/WasteManagement";
+import AllReports from "./pages/AllReports";
 import SocialCredit from "./pages/SocialCredit";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/carbon" element={<CarbonTracking />} />
               <Route path="/waste" element={<WasteManagement />} />
+              <Route path="/reports" element={<AllReports />} />
               <Route path="/credits" element={<SocialCredit />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<NotFound />} />

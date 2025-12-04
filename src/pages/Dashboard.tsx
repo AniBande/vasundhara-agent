@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from '@/components/Navigation';
 import ScoreCard from '@/components/ScoreCard';
+import apiClient from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -20,18 +21,38 @@ import { motion } from 'framer-motion';
 const Dashboard = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    total_reports: 0,
+    resolved: 0,
+    in_progress: 0,
+    pending: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/auth');
+    } else {
+      fetchStats();
     }
   }, [isAuthenticated, navigate]);
+
+  const fetchStats = async () => {
+    try {
+      const response = await apiClient.get('/auth/report-stats/');
+      setStats(response.data);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (!user) return null;
 
   const notifications = [
     { id: 1, type: 'success', message: 'Bin overflow resolved - Crew dispatched successfully', time: '10 min ago' },
-    { id: 2, type: 'info', message: 'Your carbon footprint decreased by 12% this month', time: '2 hours ago' },
+    { id: 2, type: 'info', message: `Your carbon footprint decreased by 12% this month`, time: '2 hours ago' },
     { id: 3, type: 'warning', message: 'New waste hotspot detected in your area', time: '5 hours ago' }
   ];
 
@@ -43,6 +64,7 @@ const Dashboard = () => {
   ];
 
   const unifiedScore = user.ecoScore + user.civicScore;
+  const co2Reduced = stats.resolved * 50; // 50kg per resolved issue
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,7 +86,7 @@ const Dashboard = () => {
                 Your sustainability journey continues. Here's your impact today.
               </p>
             </div>
-            <Button className="gradient-eco shadow-eco gap-2">
+            <Button className="gradient-eco shadow-eco gap-2" onClick={() => navigate('/waste')}>
               <MapPin className="h-4 w-4" />
               Report Issue
             </Button>
@@ -133,6 +155,7 @@ const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
+          className="mb-8"
         >
           <div className="flex items-center gap-2 mb-4">
             <Bell className="h-5 w-5 text-primary" />
@@ -170,16 +193,16 @@ const Dashboard = () => {
             <h3 className="text-xl font-semibold text-foreground mb-4">Your Impact This Month</h3>
             <div className="grid md:grid-cols-3 gap-6">
               <div className="text-center">
-                <p className="text-3xl font-bold text-leaf">124 kg</p>
+                <p className="text-3xl font-bold text-green-600">{co2Reduced} kg</p>
                 <p className="text-sm text-muted-foreground mt-1">CO₂ Reduced</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-water">8</p>
+                <p className="text-3xl font-bold text-blue-600">{stats.total_reports}</p>
                 <p className="text-sm text-muted-foreground mt-1">Issues Reported</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-sun">45</p>
-                <p className="text-sm text-muted-foreground mt-1">Community Rank</p>
+                <p className="text-3xl font-bold text-orange-600">{stats.resolved}</p>
+                <p className="text-sm text-muted-foreground mt-1">Issues Resolved</p>
               </div>
             </div>
           </Card>

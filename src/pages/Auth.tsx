@@ -12,7 +12,7 @@ import { motion } from 'framer-motion';
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, signup } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   
   const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -31,8 +31,8 @@ const Auth = () => {
       await login(loginData.email, loginData.password);
       toast.success('Welcome back to Vasundhara!');
       navigate('/dashboard');
-    } catch (error) {
-      toast.error('Login failed. Please try again.');
+    } catch (error: any) {
+      toast.error(error.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -45,15 +45,20 @@ const Auth = () => {
       toast.error('Passwords do not match');
       return;
     }
+
+    if (!signupData.name.trim()) {
+      toast.error('Please enter your full name');
+      return;
+    }
     
     setIsLoading(true);
     
     try {
-      await login(signupData.email, signupData.password);
+      await signup(signupData.name, signupData.email, signupData.password, 'citizen');
       toast.success('Account created successfully!');
       navigate('/dashboard');
-    } catch (error) {
-      toast.error('Signup failed. Please try again.');
+    } catch (error: any) {
+      toast.error(error.message || 'Signup failed. Please try again.');
     } finally {
       setIsLoading(false);
     }

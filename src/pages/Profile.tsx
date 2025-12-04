@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import Navigation from '@/components/Navigation';
+import apiClient from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,9 @@ import {
   Globe,
   Shield,
   Moon,
-  Sun
+  Sun,
+  Award,
+  Zap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -24,6 +27,7 @@ const Profile = () => {
   const { user, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -33,8 +37,16 @@ const Profile = () => {
 
   if (!user) return null;
 
-  const handleSaveProfile = () => {
-    toast.success('Profile updated successfully');
+  const handleSaveProfile = async () => {
+    setIsLoading(true);
+    try {
+      // You can add profile update endpoint here
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      toast.error('Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -81,10 +93,14 @@ const Profile = () => {
               </div>
               <div>
                 <Label htmlFor="role">Role</Label>
-                <Input id="role" defaultValue={user.role} disabled className="mt-1" />
+                <Input id="role" defaultValue={user.role} disabled className="mt-1 bg-muted" />
               </div>
-              <Button className="gradient-eco shadow-eco" onClick={handleSaveProfile}>
-                Save Changes
+              <Button 
+                className="gradient-eco shadow-eco" 
+                onClick={handleSaveProfile}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </Card>
@@ -144,6 +160,7 @@ const Profile = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
+          className="mb-6"
         >
           <Card className="p-6 gradient-card border-border/50 shadow-soft">
             <h2 className="text-xl font-semibold text-foreground mb-4">Score History</h2>
@@ -155,6 +172,35 @@ const Profile = () => {
               <div className="p-4 rounded-lg bg-secondary/10">
                 <p className="text-sm text-muted-foreground mb-1">Current Civic Score</p>
                 <p className="text-3xl font-bold text-secondary">{user.civicScore}</p>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        {/* Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mb-6"
+        >
+          <Card className="p-6 gradient-card border-border/50 shadow-soft">
+            <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Achievements & Stats
+            </h2>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                <p className="text-sm text-muted-foreground mb-1">Badge</p>
+                <p className="text-2xl font-bold text-green-600">{user.badge}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <p className="text-sm text-muted-foreground mb-1">Issues Reported</p>
+                <p className="text-2xl font-bold text-blue-600">{user.issuesReported}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <p className="text-sm text-muted-foreground mb-1">Carbon Credits</p>
+                <p className="text-2xl font-bold text-orange-600">{user.carbonCredits.toFixed(1)}</p>
               </div>
             </div>
           </Card>

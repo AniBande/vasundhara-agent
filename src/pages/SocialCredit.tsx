@@ -133,7 +133,7 @@ const SocialCredit = () => {
         >
           <h2 className="text-2xl font-semibold text-foreground mb-4 flex items-center gap-2">
             <TrendingUp className="h-6 w-6 text-primary" />
-            Recent Activities
+            Others benefitted in the community
           </h2>
           <div className="space-y-3">
             {activities.map((activity, index) => (

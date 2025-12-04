@@ -34,7 +34,7 @@ const Navigation = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground">Vasundhara 2.0</h1>
-              <p className="text-xs text-muted-foreground">Agentic Civic OS</p>
+              <p className="text-xs text-muted-foreground">Agentic Civic Platform</p>
             </div>
           </Link>
 
@@ -57,6 +57,12 @@ const Navigation = () => {
                   <Button variant="ghost" size="sm" className="gap-2">
                     <Trash2 className="h-4 w-4" />
                     Waste
+                  </Button>
+                </Link>
+                <Link to="/reports">
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    Reports
                   </Button>
                 </Link>
                 <Link to="/credits">
